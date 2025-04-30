@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox fx:id="rootPane" spacing="15.0" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.havenwatch.controllers.ProfileController">
+    <children>
+        <Label styleClass="page-title" text="Profile">
+            <font>
+                <Font name="System Bold" size="18.0" />
+            </font>
+        </Label>
+        <Separator prefWidth="200.0" />
+        <HBox styleClass="stat-box">
+            <children>
+                <VBox prefWidth="600.0">
+                    <children>
+                        <Label styleClass="section-label" text="User Information">
+                            <font>
+                                <Font name="System Bold" size="14.0" />
+                            </font>
+                            <VBox.margin>
+                                <Insets bottom="10.0" />
+                            </VBox.margin>
+                        </Label>
+                        <HBox spacing="5.0">
+                            <children>
+                                <Label styleClass="form-label" text="Username:">
+                                    <font>
+                                        <Font name="System Bold" size="12.0" />
+                                    </font>
+                                </Label>
+                                <Label fx:id="userNameLabel" text="username" />
+                            </children>
+                            <VBox.margin>
+                                <Insets bottom="5.0" />
+                            </VBox.margin>
+                        </HBox>
+                        <HBox spacing="5.0">
+                            <children>
+                                <Label styleClass="form-label" text="Role:">
+                                    <font>
+                                        <Font name="System Bold" size="12.0" />
+                                    </font>
+                                </Label>
+                                <Label fx:id="roleLabel" text="role" />
+                            </children>
+                            <VBox.margin>
+                                <Insets bottom="20.0" />
+                            </VBox.margin>
+                        </HBox>
+                        <VBox spacing="5.0">
+                            <children>
+                                <Label styleClass="form-label" text="Full Name" />
+                                <TextField fx:id="fullNameField" promptText="Full Name" />
+                            </children>
+                            <VBox.margin>
+                                <Insets bottom="10.0" />
+                            </VBox.margin>
+                        </VBox>
+                        <VBox spacing="5.0">
+                            <children>
+                                <Label styleClass="form-label" text="Email" />
+                                <TextField fx:id="emailField" promptText="Email" />
+                            </children>
+                            <VBox.margin>
+                                <Insets bottom="10.0" />
+                            </VBox.margin>
+                        </VBox>
+                        <VBox spacing="5.0">
+                            <children>
+                                <Label styleClass="form-label" text="Phone" />
+                                <TextField fx:id="phoneField" promptText="Phone" />
+                            </children>
+                            <VBox.margin>
+                                <Insets bottom="20.0" />
+                            </VBox.margin>
+                        </VBox>
+                        <HBox alignment="CENTER_RIGHT">
+                            <children>
+                                <Button fx:id="saveProfileButton" defaultButton="true" mnemonicParsing="false" onAction="#handleSaveProfile" styleClass="primary-button" text="Save Profile" />
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </children>
+            <padding>
+                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+            </padding>
+        </HBox>
+        <HBox styleClass="stat-box">
+            <children>
+                <VBox prefWidth="600.0">
+                    <children>
+                        <Label styleClass="section-label" text="Change Password">
+                            <font>
+                                <Font name="System Bold" size="14.0" />
+                            </font>
+                            <VBox.margin>
+                                <Insets bottom="10.0" />
+                            </VBox.margin>
+                        </Label>
+                        <VBox spacing="5.0">
+                            <children>
+                                <Label styleClass="form-label" text="Current Password" />
+                                <PasswordField fx:id="currentPasswordField" promptText="Current Password" />
+                            </children>
+                            <VBox.margin>
+                                <Insets bottom="10.0" />
+                            </VBox.margin>
+                        </VBox>
+                        <VBox spacing="5.0">
+                            <children>
+                                <Label styleClass="form-label" text="New Password" />
+                                <PasswordField fx:id="newPasswordField" promptText="New Password" />
+                            </children>
+                            <VBox.margin>
+                                <Insets bottom="10.0" />
+                            </VBox.margin>
+                        </VBox>
+                        <VBox spacing="5.0">
+                            <children>
+                                <Label styleClass="form-label" text="Confirm New Password" />
+                                <PasswordField fx:id="confirmPasswordField" promptText="Confirm New Password" />
+                            </children>
+                            <VBox.margin>
+                                <Insets bottom="20.0" />
+                            </VBox.margin>
+                        </VBox>
+                        <HBox alignment="CENTER_RIGHT">
+                            <children>
+                                <Button fx:id="changePasswordButton" mnemonicParsing="false" onAction="#handleChangePassword" styleClass="primary-button" text="Change Password" />
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </children>
+            <padding>
+                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+            </padding>
+        </HBox>
+    </children>
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+</VBox>

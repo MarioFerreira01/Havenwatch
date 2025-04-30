@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox fx:id="rootPane" spacing="15.0" stylesheets="@../css/styles.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.havenwatch.controllers.HistoryController">
+    <children>
+        <HBox alignment="CENTER_LEFT">
+            <children>
+                <Label styleClass="page-title" text="Historical Data">
+                    <font>
+                        <Font name="System Bold" size="18.0" />
+                    </font>
+                </Label>
+                <Button mnemonicParsing="false" onAction="#handleRefresh" styleClass="refresh-button" text="Refresh">
+                    <HBox.margin>
+                        <Insets left="15.0" />
+                    </HBox.margin>
+                </Button>
+            </children>
+        </HBox>
+        <Separator prefWidth="200.0" />
+        <HBox spacing="15.0" styleClass="stat-box">
+            <padding>
+                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+            </padding>
+            <children>
+                <VBox spacing="5.0" HBox.hgrow="SOMETIMES">
+                    <children>
+                        <Label styleClass="form-label" text="Resident" />
+                        <ComboBox fx:id="residentComboBox" prefHeight="32.0" prefWidth="150.0" promptText="Select Resident" />
+                    </children>
+                </VBox>
+                <VBox spacing="5.0" HBox.hgrow="SOMETIMES">
+                    <children>
+                        <Label styleClass="form-label" text="Data Type" />
+                        <ComboBox fx:id="dataTypeComboBox" prefHeight="32.0" prefWidth="150.0" promptText="Select Data Type" />
+                    </children>
+                </VBox>
+                <VBox spacing="5.0" HBox.hgrow="SOMETIMES">
+                    <children>
+                        <Label styleClass="form-label" text="Day Range" />
+                        <ComboBox fx:id="dayRangeComboBox" prefHeight="32.0" prefWidth="100.0" promptText="Days" />
+                    </children>
+                </VBox>
+                <VBox spacing="5.0" HBox.hgrow="SOMETIMES">
+                    <children>
+                        <Label styleClass="form-label" text="Start Date" />
+                        <DatePicker fx:id="startDatePicker" prefHeight="32.0" prefWidth="150.0" promptText="Start Date" />
+                    </children>
+                </VBox>
+                <VBox spacing="5.0" HBox.hgrow="SOMETIMES">
+                    <children>
+                        <Label styleClass="form-label" text="End Date" />
+                        <DatePicker fx:id="endDatePicker" prefHeight="32.0" prefWidth="150.0" promptText="End Date" />
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+        <Label fx:id="noDataLabel" styleClass="section-label" text="No data available for the selected criteria. Please adjust your selection or ensure that the resident has recorded data." textAlignment="CENTER" wrapText="true">
+            <VBox.margin>
+                <Insets top="50.0" />
+            </VBox.margin>
+        </Label>
+        <TableView fx:id="dataTable" prefHeight="200.0" prefWidth="200.0">
+            <columns>
+                <TableColumn fx:id="timestampColumn" prefWidth="150.0" text="Time" />
+                <TableColumn fx:id="value1Column" prefWidth="100.0" text="Value 1" />
+                <TableColumn fx:id="value2Column" prefWidth="100.0" text="Value 2" />
+                <TableColumn fx:id="value3Column" prefWidth="100.0" text="Value 3" />
+                <TableColumn fx:id="value4Column" prefWidth="100.0" text="Value 4" />
+            </columns>
+        </TableView>
+        <LineChart fx:id="dataChart" prefHeight="400.0" prefWidth="500.0" title="Historical Data Trends">
+            <xAxis>
+                <NumberAxis fx:id="xAxis" label="Data Points" side="BOTTOM" />
+            </xAxis>
+            <yAxis>
+                <NumberAxis fx:id="yAxis" label="Value" side="LEFT" />
+            </yAxis>
+        </LineChart>
+    </children>
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+</VBox>
