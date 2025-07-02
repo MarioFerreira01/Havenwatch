@@ -8,10 +8,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class EnvironmentDataDAO {
-    private final Connection connection;
 
-    public EnvironmentDataDAO() {
-        connection = DatabaseConnection.getInstance().getConnection();
+    /**
+     * Get a fresh database connection for each operation
+     */
+    private Connection getConnection() throws SQLException {
+        return DatabaseConnection.getInstance().getConnection();
     }
 
     /**
@@ -21,7 +23,10 @@ public class EnvironmentDataDAO {
      */
     public EnvironmentData getLatestEnvironmentData(int residentId) {
         String query = "SELECT * FROM environment_data WHERE resident_id = ? ORDER BY timestamp DESC LIMIT 1";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, residentId);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -31,6 +36,7 @@ public class EnvironmentDataDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error getting latest environment data: " + e.getMessage());
+            e.printStackTrace();
         }
         return null;
     }
@@ -45,7 +51,10 @@ public class EnvironmentDataDAO {
     public List<EnvironmentData> getEnvironmentDataInRange(int residentId, LocalDateTime startTime, LocalDateTime endTime) {
         List<EnvironmentData> environmentDataList = new ArrayList<>();
         String query = "SELECT * FROM environment_data WHERE resident_id = ? AND timestamp BETWEEN ? AND ? ORDER BY timestamp";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, residentId);
             stmt.setTimestamp(2, Timestamp.valueOf(startTime));
             stmt.setTimestamp(3, Timestamp.valueOf(endTime));
@@ -57,6 +66,7 @@ public class EnvironmentDataDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error getting environment data in range: " + e.getMessage());
+            e.printStackTrace();
         }
         return environmentDataList;
     }
@@ -67,16 +77,16 @@ public class EnvironmentDataDAO {
      * @return true if successful, false otherwise
      */
     public boolean insertEnvironmentData(EnvironmentData environmentData) {
-        String query = "INSERT INTO environment_data (resident_id, room_temperature, humidity, " +
-                "air_quality, gas_level, motion_detected) " +
-                "VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+        String query = "INSERT INTO environment_data (resident_id, room_temperature, humidity, air_quality, gas_level) VALUES (?, ?, ?, ?, ?)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+
             stmt.setInt(1, environmentData.getResidentId());
             stmt.setDouble(2, environmentData.getRoomTemperature());
             stmt.setInt(3, environmentData.getHumidity());
             stmt.setInt(4, environmentData.getAirQuality());
             stmt.setInt(5, environmentData.getGasLevel());
-            stmt.setBoolean(6, environmentData.isMotionDetected());
 
             int affectedRows = stmt.executeUpdate();
             if (affectedRows == 0) {
@@ -91,6 +101,7 @@ public class EnvironmentDataDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error inserting environment data: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -102,13 +113,17 @@ public class EnvironmentDataDAO {
      */
     public boolean deleteEnvironmentData(int environmentId) {
         String query = "DELETE FROM environment_data WHERE environment_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, environmentId);
 
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, environmentId);
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
+
         } catch (SQLException e) {
             System.err.println("Error deleting environment data: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -126,7 +141,10 @@ public class EnvironmentDataDAO {
                 "AVG(gas_level) as gas_level " +
                 "FROM environment_data " +
                 "WHERE resident_id = ? AND timestamp >= DATE_SUB(NOW(), INTERVAL ? DAY)";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, residentId);
             stmt.setInt(2, days);
 
@@ -138,13 +156,12 @@ public class EnvironmentDataDAO {
                     avgData.setHumidity((int)Math.round(rs.getDouble("humidity")));
                     avgData.setAirQuality((int)Math.round(rs.getDouble("air_quality")));
                     avgData.setGasLevel((int)Math.round(rs.getDouble("gas_level")));
-                    // Motion detected doesn't make sense to average
-                    avgData.setMotionDetected(false);
                     return avgData;
                 }
             }
         } catch (SQLException e) {
             System.err.println("Error getting average environment data: " + e.getMessage());
+            e.printStackTrace();
         }
         return null;
     }
@@ -160,7 +177,6 @@ public class EnvironmentDataDAO {
         environmentData.setHumidity(rs.getInt("humidity"));
         environmentData.setAirQuality(rs.getInt("air_quality"));
         environmentData.setGasLevel(rs.getInt("gas_level"));
-        environmentData.setMotionDetected(rs.getBoolean("motion_detected"));
         environmentData.setTimestamp(rs.getTimestamp("timestamp").toLocalDateTime());
         return environmentData;
     }

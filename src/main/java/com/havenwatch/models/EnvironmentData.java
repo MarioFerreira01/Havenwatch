@@ -9,7 +9,6 @@ public class EnvironmentData {
     private int humidity;
     private int airQuality;
     private int gasLevel;
-    private boolean motionDetected;
     private LocalDateTime timestamp;
 
     // Default constructor
@@ -17,27 +16,23 @@ public class EnvironmentData {
     }
 
     // Constructor with essential fields
-    public EnvironmentData(int residentId, double roomTemperature, int humidity, int airQuality,
-                           int gasLevel, boolean motionDetected) {
+    public EnvironmentData(int residentId, double roomTemperature, int humidity, int airQuality, int gasLevel) {
         this.residentId = residentId;
         this.roomTemperature = roomTemperature;
         this.humidity = humidity;
         this.airQuality = airQuality;
         this.gasLevel = gasLevel;
-        this.motionDetected = motionDetected;
     }
 
     // Full constructor
     public EnvironmentData(int environmentId, int residentId, double roomTemperature, int humidity,
-                           int airQuality, int gasLevel, boolean motionDetected,
-                           LocalDateTime timestamp) {
+                           int airQuality, int gasLevel, LocalDateTime timestamp) {
         this.environmentId = environmentId;
         this.residentId = residentId;
         this.roomTemperature = roomTemperature;
         this.humidity = humidity;
         this.airQuality = airQuality;
         this.gasLevel = gasLevel;
-        this.motionDetected = motionDetected;
         this.timestamp = timestamp;
     }
 
@@ -90,14 +85,6 @@ public class EnvironmentData {
         this.gasLevel = gasLevel;
     }
 
-    public boolean isMotionDetected() {
-        return motionDetected;
-    }
-
-    public void setMotionDetected(boolean motionDetected) {
-        this.motionDetected = motionDetected;
-    }
-
     public LocalDateTime getTimestamp() {
         return timestamp;
     }
@@ -110,6 +97,7 @@ public class EnvironmentData {
     public String toString() {
         return "EnvironmentData [environmentId=" + environmentId + ", residentId=" + residentId +
                 ", roomTemperature=" + roomTemperature + ", humidity=" + humidity +
+                ", airQuality=" + airQuality + ", gasLevel=" + gasLevel +
                 ", timestamp=" + timestamp + "]";
     }
 }
