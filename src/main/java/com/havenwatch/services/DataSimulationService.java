@@ -7,7 +7,6 @@ import com.havenwatch.models.HealthData;
 import com.havenwatch.models.EnvironmentData;
 import com.havenwatch.models.Resident;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Executors;
@@ -27,7 +26,7 @@ public class DataSimulationService {
     private ScheduledExecutorService scheduler;
     private boolean isRunning = false;
 
-    // Normal ranges for health data
+    // Normal ranges for health data (updated without temperature, weight, glucose)
     private static final int HEART_RATE_MIN = 60;
     private static final int HEART_RATE_MAX = 100;
     private static final int HEART_RATE_VARIATION = 5;
@@ -38,19 +37,11 @@ public class DataSimulationService {
     private static final int DIASTOLIC_MAX = 90;
     private static final int BP_VARIATION = 5;
 
-    private static final double TEMPERATURE_MIN = 36.1;
-    private static final double TEMPERATURE_MAX = 37.2;
-    private static final double TEMPERATURE_VARIATION = 0.2;
-
     private static final int OXYGEN_MIN = 94;
     private static final int OXYGEN_MAX = 99;
     private static final int OXYGEN_VARIATION = 1;
 
-    private static final int GLUCOSE_MIN = 80;
-    private static final int GLUCOSE_MAX = 140;
-    private static final int GLUCOSE_VARIATION = 10;
-
-    // Normal ranges for environment data
+    // Normal ranges for environment data (removed motion_detected)
     private static final double ROOM_TEMP_MIN = 18.0;
     private static final double ROOM_TEMP_MAX = 25.0;
     private static final double ROOM_TEMP_VARIATION = 0.5;
@@ -111,7 +102,17 @@ public class DataSimulationService {
         }
 
         isRunning = false;
-        scheduler.shutdown();
+        if (scheduler != null) {
+            scheduler.shutdown();
+            try {
+                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                    scheduler.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                scheduler.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
         System.out.println("Data simulation stopped");
     }
 
@@ -169,28 +170,6 @@ public class DataSimulationService {
         }
         newData.setBloodPressure(systolic + "/" + diastolic);
 
-        // Generate temperature
-        if (latestData == null) {
-            newData.setTemperature(randomDouble(TEMPERATURE_MIN, TEMPERATURE_MAX));
-        } else {
-            double baseTemp = latestData.getTemperature();
-            double variation = randomDouble(-TEMPERATURE_VARIATION, TEMPERATURE_VARIATION);
-            double newTemp = baseTemp + variation;
-
-            // Keep within normal range unless abnormal flag is set
-            if (!shouldBeAbnormal) {
-                newTemp = Math.max(TEMPERATURE_MIN, Math.min(TEMPERATURE_MAX, newTemp));
-            } else if (random.nextBoolean()) {
-                // Fever
-                newTemp = TEMPERATURE_MAX + randomDouble(0.5, 2.0);
-            } else {
-                // Low temperature
-                newTemp = TEMPERATURE_MIN - randomDouble(0.5, 1.5);
-            }
-
-            newData.setTemperature(Math.round(newTemp * 10) / 10.0);  // Round to 1 decimal place
-        }
-
         // Generate blood oxygen
         int oxygen = randomBetween(OXYGEN_MIN, OXYGEN_MAX);
         if (shouldBeAbnormal && random.nextBoolean()) {
@@ -198,22 +177,6 @@ public class DataSimulationService {
             oxygen = OXYGEN_MIN - randomBetween(3, 10);
         }
         newData.setBloodOxygen(oxygen);
-
-        // Generate weight (use a fixed value or slight variation)
-        newData.setWeight(70.0 + randomDouble(-5.0, 5.0));
-
-        // Generate glucose level
-        int glucose = randomBetween(GLUCOSE_MIN, GLUCOSE_MAX);
-        if (shouldBeAbnormal && random.nextBoolean()) {
-            if (random.nextBoolean()) {
-                // High glucose
-                glucose = GLUCOSE_MAX + randomBetween(40, 100);
-            } else {
-                // Low glucose
-                glucose = GLUCOSE_MIN - randomBetween(10, 30);
-            }
-        }
-        newData.setGlucoseLevel(glucose);
 
         // Save to database
         if (healthDataDAO.insertHealthData(newData)) {
@@ -283,9 +246,6 @@ public class DataSimulationService {
             gasLevel = GAS_LEVEL_MAX + randomBetween(30, 70);
         }
         newData.setGasLevel(gasLevel);
-
-        // Generate motion (random)
-        newData.setMotionDetected(random.nextBoolean());
 
         // Save to database
         if (environmentDataDAO.insertEnvironmentData(newData)) {

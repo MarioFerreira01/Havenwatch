@@ -8,10 +8,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class HealthDataDAO {
-    private final Connection connection;
 
-    public HealthDataDAO() {
-        connection = DatabaseConnection.getInstance().getConnection();
+    /**
+     * Get a fresh database connection for each operation
+     */
+    private Connection getConnection() throws SQLException {
+        return DatabaseConnection.getInstance().getConnection();
     }
 
     /**
@@ -21,7 +23,9 @@ public class HealthDataDAO {
      */
     public HealthData getLatestHealthData(int residentId) {
         String query = "SELECT * FROM health_data WHERE resident_id = ? ORDER BY timestamp DESC LIMIT 1";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, residentId);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -31,6 +35,7 @@ public class HealthDataDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error getting latest health data: " + e.getMessage());
+            e.printStackTrace();
         }
         return null;
     }
@@ -45,7 +50,10 @@ public class HealthDataDAO {
     public List<HealthData> getHealthDataInRange(int residentId, LocalDateTime startTime, LocalDateTime endTime) {
         List<HealthData> healthDataList = new ArrayList<>();
         String query = "SELECT * FROM health_data WHERE resident_id = ? AND timestamp BETWEEN ? AND ? ORDER BY timestamp";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, residentId);
             stmt.setTimestamp(2, Timestamp.valueOf(startTime));
             stmt.setTimestamp(3, Timestamp.valueOf(endTime));
@@ -57,6 +65,7 @@ public class HealthDataDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error getting health data in range: " + e.getMessage());
+            e.printStackTrace();
         }
         return healthDataList;
     }
@@ -67,16 +76,15 @@ public class HealthDataDAO {
      * @return true if successful, false otherwise
      */
     public boolean insertHealthData(HealthData healthData) {
-        String query = "INSERT INTO health_data (resident_id, heart_rate, blood_pressure, temperature, " +
-                "blood_oxygen, weight, glucose_level) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+        String query = "INSERT INTO health_data (resident_id, heart_rate, blood_pressure, blood_oxygen) VALUES (?, ?, ?, ?)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+
             stmt.setInt(1, healthData.getResidentId());
             stmt.setInt(2, healthData.getHeartRate());
             stmt.setString(3, healthData.getBloodPressure());
-            stmt.setDouble(4, healthData.getTemperature());
-            stmt.setInt(5, healthData.getBloodOxygen());
-            stmt.setDouble(6, healthData.getWeight());
-            stmt.setInt(7, healthData.getGlucoseLevel());
+            stmt.setInt(4, healthData.getBloodOxygen());
 
             int affectedRows = stmt.executeUpdate();
             if (affectedRows == 0) {
@@ -91,6 +99,7 @@ public class HealthDataDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error inserting health data: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -102,13 +111,17 @@ public class HealthDataDAO {
      */
     public boolean deleteHealthData(int healthId) {
         String query = "DELETE FROM health_data WHERE health_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, healthId);
 
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, healthId);
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
+
         } catch (SQLException e) {
             System.err.println("Error deleting health data: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -120,14 +133,13 @@ public class HealthDataDAO {
      * @return HealthData object with averages or null if no data
      */
     public HealthData getAverageHealthData(int residentId, int days) {
-        String query = "SELECT AVG(heart_rate) as heart_rate, " +
-                "AVG(temperature) as temperature, " +
-                "AVG(blood_oxygen) as blood_oxygen, " +
-                "AVG(weight) as weight, " +
-                "AVG(glucose_level) as glucose_level " +
+        String query = "SELECT AVG(heart_rate) as heart_rate, AVG(blood_oxygen) as blood_oxygen " +
                 "FROM health_data " +
                 "WHERE resident_id = ? AND timestamp >= DATE_SUB(NOW(), INTERVAL ? DAY)";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, residentId);
             stmt.setInt(2, days);
 
@@ -136,15 +148,15 @@ public class HealthDataDAO {
                     HealthData avgData = new HealthData();
                     avgData.setResidentId(residentId);
                     avgData.setHeartRate((int)Math.round(rs.getDouble("heart_rate")));
-                    avgData.setTemperature(rs.getDouble("temperature"));
                     avgData.setBloodOxygen((int)Math.round(rs.getDouble("blood_oxygen")));
-                    avgData.setWeight(rs.getDouble("weight"));
-                    avgData.setGlucoseLevel((int)Math.round(rs.getDouble("glucose_level")));
+                    // Blood pressure doesn't make sense to average
+                    avgData.setBloodPressure("N/A");
                     return avgData;
                 }
             }
         } catch (SQLException e) {
             System.err.println("Error getting average health data: " + e.getMessage());
+            e.printStackTrace();
         }
         return null;
     }
@@ -158,10 +170,7 @@ public class HealthDataDAO {
         healthData.setResidentId(rs.getInt("resident_id"));
         healthData.setHeartRate(rs.getInt("heart_rate"));
         healthData.setBloodPressure(rs.getString("blood_pressure"));
-        healthData.setTemperature(rs.getDouble("temperature"));
         healthData.setBloodOxygen(rs.getInt("blood_oxygen"));
-        healthData.setWeight(rs.getDouble("weight"));
-        healthData.setGlucoseLevel(rs.getInt("glucose_level"));
         healthData.setTimestamp(rs.getTimestamp("timestamp").toLocalDateTime());
         return healthData;
     }

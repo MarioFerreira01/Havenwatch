@@ -4,11 +4,10 @@ import com.havenwatch.models.EnvironmentData;
 import com.havenwatch.models.HealthData;
 import com.havenwatch.models.Resident;
 import com.havenwatch.services.DashboardService;
+import com.havenwatch.services.AccessControlService;
 import com.havenwatch.utils.AlertUtils;
 import com.havenwatch.utils.DateTimeUtils;
 
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -26,11 +25,10 @@ import javafx.util.StringConverter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Controller for the historical data view
+ * Controller for the historical data view with proper access control
  */
 public class HistoryController {
     @FXML
@@ -82,9 +80,10 @@ public class HistoryController {
     private NumberAxis yAxis;
 
     private final DashboardService dashboardService = new DashboardService();
+    private final AccessControlService accessControlService = new AccessControlService();
 
     /**
-     * Data model for historical data entries
+     * Data model for historical data entries (updated for new schema)
      */
     public static class HistoricalDataEntry {
         private LocalDateTime timestamp;
@@ -151,109 +150,121 @@ public class HistoryController {
      */
     @FXML
     private void initialize() {
-        // Set up resident combo box
-        loadResidents();
+        try {
+            // Set up resident combo box with access control
+            loadResidents();
 
-        // Set up data type combo box
-        dataTypeComboBox.setItems(FXCollections.observableArrayList(
-                "Health Data", "Environment Data"
-        ));
-        dataTypeComboBox.getSelectionModel().selectFirst();
+            // Set up data type combo box
+            dataTypeComboBox.setItems(FXCollections.observableArrayList(
+                    "Health Data", "Environment Data"
+            ));
+            dataTypeComboBox.getSelectionModel().selectFirst();
 
-        // Set up day range combo box
-        dayRangeComboBox.setItems(FXCollections.observableArrayList(
-                1, 3, 7, 14, 30, 90
-        ));
-        dayRangeComboBox.getSelectionModel().select(2); // Default to 7 days
+            // Set up day range combo box
+            dayRangeComboBox.setItems(FXCollections.observableArrayList(
+                    1, 3, 7, 14, 30, 90
+            ));
+            dayRangeComboBox.getSelectionModel().select(2); // Default to 7 days
 
-        // Set up date pickers
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(7);
-        startDatePicker.setValue(startDate);
-        endDatePicker.setValue(endDate);
+            // Set up date pickers
+            LocalDate endDate = LocalDate.now();
+            LocalDate startDate = endDate.minusDays(7);
+            startDatePicker.setValue(startDate);
+            endDatePicker.setValue(endDate);
 
-        // Set up table columns
-        timestampColumn.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFormattedTimestamp()));
+            // Set up table columns
+            timestampColumn.setCellValueFactory(cellData ->
+                    new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFormattedTimestamp()));
 
-        value1Column.setCellValueFactory(new PropertyValueFactory<>("value1"));
-        value2Column.setCellValueFactory(new PropertyValueFactory<>("value2"));
-        value3Column.setCellValueFactory(new PropertyValueFactory<>("value3"));
-        value4Column.setCellValueFactory(new PropertyValueFactory<>("value4"));
+            value1Column.setCellValueFactory(new PropertyValueFactory<>("value1"));
+            value2Column.setCellValueFactory(new PropertyValueFactory<>("value2"));
+            value3Column.setCellValueFactory(new PropertyValueFactory<>("value3"));
+            value4Column.setCellValueFactory(new PropertyValueFactory<>("value4"));
 
-        // Add change listeners
-        residentComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null) {
-                loadData();
-            }
-        });
+            // Add change listeners
+            residentComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue != null) {
+                    loadData();
+                }
+            });
 
-        dataTypeComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null) {
-                updateColumnHeaders();
-                loadData();
-            }
-        });
+            dataTypeComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue != null) {
+                    updateColumnHeaders();
+                    loadData();
+                }
+            });
 
-        dayRangeComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null) {
-                // Update date pickers based on selected range
-                LocalDate end = LocalDate.now();
-                LocalDate start = end.minusDays(newValue);
-                startDatePicker.setValue(start);
-                endDatePicker.setValue(end);
+            dayRangeComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue != null) {
+                    // Update date pickers based on selected range
+                    LocalDate end = LocalDate.now();
+                    LocalDate start = end.minusDays(newValue);
+                    startDatePicker.setValue(start);
+                    endDatePicker.setValue(end);
 
-                loadData();
-            }
-        });
+                    loadData();
+                }
+            });
 
-        startDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null && endDatePicker.getValue() != null) {
-                loadData();
-            }
-        });
+            startDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue != null && endDatePicker.getValue() != null) {
+                    loadData();
+                }
+            });
 
-        endDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null && startDatePicker.getValue() != null) {
-                loadData();
-            }
-        });
+            endDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue != null && startDatePicker.getValue() != null) {
+                    loadData();
+                }
+            });
 
-        // Set initial column headers
-        updateColumnHeaders();
+            // Set initial column headers
+            updateColumnHeaders();
 
-        // Show no data message initially
-        showNoDataMessage(true);
-    }
+            // Show no data message initially
+            showNoDataMessage(true);
 
-    /**
-     * Load residents from the database
-     */
-    private void loadResidents() {
-        List<Resident> residents = dashboardService.getAccessibleResidents();
-        residentComboBox.setItems(FXCollections.observableArrayList(residents));
-
-        // Set converter to display resident names
-        residentComboBox.setConverter(new StringConverter<Resident>() {
-            @Override
-            public String toString(Resident resident) {
-                return resident != null ? resident.getFullName() : "";
-            }
-
-            @Override
-            public Resident fromString(String string) {
-                return null; // Not needed for combo box
-            }
-        });
-
-        // Select first resident if available
-        if (!residents.isEmpty()) {
-            residentComboBox.getSelectionModel().selectFirst();
+        } catch (Exception e) {
+            System.err.println("Error initializing history controller: " + e.getMessage());
+            e.printStackTrace();
+            showErrorMessage("Failed to initialize historical data view: " + e.getMessage());
         }
     }
 
     /**
-     * Update column headers based on selected data type
+     * Load residents that the current user can access
+     */
+    private void loadResidents() {
+        try {
+            List<Resident> residents = accessControlService.getAccessibleResidents();
+            residentComboBox.setItems(FXCollections.observableArrayList(residents));
+
+            // Set converter to display resident names
+            residentComboBox.setConverter(new StringConverter<Resident>() {
+                @Override
+                public String toString(Resident resident) {
+                    return resident != null ? resident.getFullName() : "";
+                }
+
+                @Override
+                public Resident fromString(String string) {
+                    return null; // Not needed for combo box
+                }
+            });
+
+            // Select first resident if available
+            if (!residents.isEmpty()) {
+                residentComboBox.getSelectionModel().selectFirst();
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading residents: " + e.getMessage());
+            showErrorMessage("Failed to load residents: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Update column headers based on selected data type (updated for new schema)
      */
     private void updateColumnHeaders() {
         String dataType = dataTypeComboBox.getValue();
@@ -262,8 +273,8 @@ public class HistoryController {
             timestampColumn.setText("Time");
             value1Column.setText("Heart Rate");
             value2Column.setText("Blood Pressure");
-            value3Column.setText("Temperature");
-            value4Column.setText("Blood Oxygen");
+            value3Column.setText("Blood Oxygen");
+            value4Column.setText(""); // No fourth value for health data anymore
         } else if ("Environment Data".equals(dataType)) {
             timestampColumn.setText("Time");
             value1Column.setText("Room Temp");
@@ -274,113 +285,123 @@ public class HistoryController {
     }
 
     /**
-     * Load data based on selected options
+     * Load data based on selected options with access control
      */
     private void loadData() {
-        Resident selectedResident = residentComboBox.getValue();
-        String dataType = dataTypeComboBox.getValue();
-        LocalDate startDate = startDatePicker.getValue();
-        LocalDate endDate = endDatePicker.getValue().plusDays(1); // Include end date
+        try {
+            Resident selectedResident = residentComboBox.getValue();
+            String dataType = dataTypeComboBox.getValue();
+            LocalDate startDate = startDatePicker.getValue();
+            LocalDate endDate = endDatePicker.getValue();
 
-        if (selectedResident == null || dataType == null || startDate == null || endDate == null) {
-            return;
-        }
-
-        ObservableList<HistoricalDataEntry> dataEntries = FXCollections.observableArrayList();
-
-        // Clear previous chart data
-        dataChart.getData().clear();
-
-        if ("Health Data".equals(dataType)) {
-            // Load health data
-            List<HealthData> healthDataList = dashboardService.getHealthDataHistory(
-                    selectedResident.getResidentId(),
-                    (int)java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate)
-            );
-
-            if (healthDataList.isEmpty()) {
-                showNoDataMessage(true);
+            if (selectedResident == null || dataType == null || startDate == null || endDate == null) {
                 return;
             }
 
-            // Create data entries
-            for (HealthData data : healthDataList) {
-                dataEntries.add(new HistoricalDataEntry(
-                        data.getTimestamp(),
-                        data.getHeartRate(),
-                        data.getBloodPressure(),
-                        data.getTemperature(),
-                        data.getBloodOxygen()
-                ));
-            }
-
-            // Create chart series
-            XYChart.Series<Number, Number> heartRateSeries = new XYChart.Series<>();
-            heartRateSeries.setName("Heart Rate");
-
-            XYChart.Series<Number, Number> temperatureSeries = new XYChart.Series<>();
-            temperatureSeries.setName("Temperature");
-
-            XYChart.Series<Number, Number> oxygenSeries = new XYChart.Series<>();
-            oxygenSeries.setName("Blood Oxygen");
-
-            for (int i = 0; i < healthDataList.size(); i++) {
-                HealthData data = healthDataList.get(i);
-                heartRateSeries.getData().add(new XYChart.Data<>(i, data.getHeartRate()));
-                temperatureSeries.getData().add(new XYChart.Data<>(i, data.getTemperature()));
-                oxygenSeries.getData().add(new XYChart.Data<>(i, data.getBloodOxygen()));
-            }
-
-            dataChart.getData().addAll(heartRateSeries, temperatureSeries, oxygenSeries);
-
-        } else if ("Environment Data".equals(dataType)) {
-            // Load environment data
-            List<EnvironmentData> environmentDataList = dashboardService.getEnvironmentDataHistory(
-                    selectedResident.getResidentId(),
-                    (int)java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate)
-            );
-
-            if (environmentDataList.isEmpty()) {
-                showNoDataMessage(true);
+            // Check access permission
+            if (!accessControlService.canAccessResident(selectedResident.getResidentId())) {
+                showErrorMessage("You do not have permission to access this resident's data.");
                 return;
             }
 
-            // Create data entries
-            for (EnvironmentData data : environmentDataList) {
-                dataEntries.add(new HistoricalDataEntry(
-                        data.getTimestamp(),
-                        data.getRoomTemperature(),
-                        data.getHumidity() + "%",
-                        data.getAirQuality(),
-                        data.getGasLevel()
-                ));
+            LocalDate endDateInclusive = endDate.plusDays(1); // Include end date
+            ObservableList<HistoricalDataEntry> dataEntries = FXCollections.observableArrayList();
+
+            // Clear previous chart data
+            dataChart.getData().clear();
+
+            if ("Health Data".equals(dataType)) {
+                // Load health data
+                List<HealthData> healthDataList = dashboardService.getHealthDataHistory(
+                        selectedResident.getResidentId(),
+                        (int)java.time.temporal.ChronoUnit.DAYS.between(startDate, endDateInclusive)
+                );
+
+                if (healthDataList.isEmpty()) {
+                    showNoDataMessage(true);
+                    return;
+                }
+
+                // Create data entries (updated for new schema - no temperature)
+                for (HealthData data : healthDataList) {
+                    dataEntries.add(new HistoricalDataEntry(
+                            data.getTimestamp(),
+                            data.getHeartRate(),          // value1: Heart Rate
+                            data.getBloodPressure(),      // value2: Blood Pressure
+                            data.getBloodOxygen(),        // value3: Blood Oxygen
+                            null                           // value4: No fourth value
+                    ));
+                }
+
+                // Create chart series (updated for new schema - no temperature)
+                XYChart.Series<Number, Number> heartRateSeries = new XYChart.Series<>();
+                heartRateSeries.setName("Heart Rate");
+
+                XYChart.Series<Number, Number> oxygenSeries = new XYChart.Series<>();
+                oxygenSeries.setName("Blood Oxygen");
+
+                for (int i = 0; i < healthDataList.size(); i++) {
+                    HealthData data = healthDataList.get(i);
+                    heartRateSeries.getData().add(new XYChart.Data<>(i, data.getHeartRate()));
+                    oxygenSeries.getData().add(new XYChart.Data<>(i, data.getBloodOxygen()));
+                }
+
+                dataChart.getData().addAll(heartRateSeries, oxygenSeries);
+
+            } else if ("Environment Data".equals(dataType)) {
+                // Load environment data
+                List<EnvironmentData> environmentDataList = dashboardService.getEnvironmentDataHistory(
+                        selectedResident.getResidentId(),
+                        (int)java.time.temporal.ChronoUnit.DAYS.between(startDate, endDateInclusive)
+                );
+
+                if (environmentDataList.isEmpty()) {
+                    showNoDataMessage(true);
+                    return;
+                }
+
+                // Create data entries (updated for new schema)
+                for (EnvironmentData data : environmentDataList) {
+                    dataEntries.add(new HistoricalDataEntry(
+                            data.getTimestamp(),
+                            data.getRoomTemperature(),    // value1: Room Temperature
+                            data.getHumidity() + "%",     // value2: Humidity
+                            data.getAirQuality(),         // value3: Air Quality
+                            data.getGasLevel()            // value4: Gas Level
+                    ));
+                }
+
+                // Create chart series (updated for new schema)
+                XYChart.Series<Number, Number> tempSeries = new XYChart.Series<>();
+                tempSeries.setName("Room Temp");
+
+                XYChart.Series<Number, Number> humiditySeries = new XYChart.Series<>();
+                humiditySeries.setName("Humidity");
+
+                XYChart.Series<Number, Number> airQualitySeries = new XYChart.Series<>();
+                airQualitySeries.setName("Air Quality");
+
+                for (int i = 0; i < environmentDataList.size(); i++) {
+                    EnvironmentData data = environmentDataList.get(i);
+                    tempSeries.getData().add(new XYChart.Data<>(i, data.getRoomTemperature()));
+                    humiditySeries.getData().add(new XYChart.Data<>(i, data.getHumidity()));
+                    airQualitySeries.getData().add(new XYChart.Data<>(i, data.getAirQuality()));
+                }
+
+                dataChart.getData().addAll(tempSeries, humiditySeries, airQualitySeries);
             }
 
-            // Create chart series
-            XYChart.Series<Number, Number> tempSeries = new XYChart.Series<>();
-            tempSeries.setName("Room Temp");
+            // Update table data
+            dataTable.setItems(dataEntries);
 
-            XYChart.Series<Number, Number> humiditySeries = new XYChart.Series<>();
-            humiditySeries.setName("Humidity");
+            // Show/hide no data message
+            showNoDataMessage(dataEntries.isEmpty());
 
-            XYChart.Series<Number, Number> airQualitySeries = new XYChart.Series<>();
-            airQualitySeries.setName("Air Quality");
-
-            for (int i = 0; i < environmentDataList.size(); i++) {
-                EnvironmentData data = environmentDataList.get(i);
-                tempSeries.getData().add(new XYChart.Data<>(i, data.getRoomTemperature()));
-                humiditySeries.getData().add(new XYChart.Data<>(i, data.getHumidity()));
-                airQualitySeries.getData().add(new XYChart.Data<>(i, data.getAirQuality()));
-            }
-
-            dataChart.getData().addAll(tempSeries, humiditySeries, airQualitySeries);
+        } catch (Exception e) {
+            System.err.println("Error loading historical data: " + e.getMessage());
+            e.printStackTrace();
+            showErrorMessage("Failed to load historical data: " + e.getMessage());
         }
-
-        // Update table data
-        dataTable.setItems(dataEntries);
-
-        // Show/hide no data message
-        showNoDataMessage(dataEntries.isEmpty());
     }
 
     /**
@@ -396,10 +417,24 @@ public class HistoryController {
     }
 
     /**
+     * Show error message to user
+     */
+    private void showErrorMessage(String message) {
+        if (rootPane != null && rootPane.getScene() != null) {
+            AlertUtils.showError(rootPane.getScene().getWindow(), "Historical Data Error", message);
+        }
+    }
+
+    /**
      * Handle refresh button click
      */
     @FXML
     private void handleRefresh() {
-        loadData();
+        try {
+            loadData();
+        } catch (Exception e) {
+            System.err.println("Error refreshing historical data: " + e.getMessage());
+            showErrorMessage("Failed to refresh data: " + e.getMessage());
+        }
     }
 }

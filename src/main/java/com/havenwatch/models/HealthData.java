@@ -7,10 +7,7 @@ public class HealthData {
     private int residentId;
     private int heartRate;
     private String bloodPressure;
-    private double temperature;
     private int bloodOxygen;
-    private double weight;
-    private int glucoseLevel;
     private LocalDateTime timestamp;
 
     // Default constructor
@@ -18,29 +15,21 @@ public class HealthData {
     }
 
     // Constructor with essential fields
-    public HealthData(int residentId, int heartRate, String bloodPressure, double temperature,
-                      int bloodOxygen, double weight, int glucoseLevel) {
+    public HealthData(int residentId, int heartRate, String bloodPressure, int bloodOxygen) {
         this.residentId = residentId;
         this.heartRate = heartRate;
         this.bloodPressure = bloodPressure;
-        this.temperature = temperature;
         this.bloodOxygen = bloodOxygen;
-        this.weight = weight;
-        this.glucoseLevel = glucoseLevel;
     }
 
     // Full constructor
     public HealthData(int healthId, int residentId, int heartRate, String bloodPressure,
-                      double temperature, int bloodOxygen, double weight, int glucoseLevel,
-                      LocalDateTime timestamp) {
+                      int bloodOxygen, LocalDateTime timestamp) {
         this.healthId = healthId;
         this.residentId = residentId;
         this.heartRate = heartRate;
         this.bloodPressure = bloodPressure;
-        this.temperature = temperature;
         this.bloodOxygen = bloodOxygen;
-        this.weight = weight;
-        this.glucoseLevel = glucoseLevel;
         this.timestamp = timestamp;
     }
 
@@ -77,36 +66,12 @@ public class HealthData {
         this.bloodPressure = bloodPressure;
     }
 
-    public double getTemperature() {
-        return temperature;
-    }
-
-    public void setTemperature(double temperature) {
-        this.temperature = temperature;
-    }
-
     public int getBloodOxygen() {
         return bloodOxygen;
     }
 
     public void setBloodOxygen(int bloodOxygen) {
         this.bloodOxygen = bloodOxygen;
-    }
-
-    public double getWeight() {
-        return weight;
-    }
-
-    public void setWeight(double weight) {
-        this.weight = weight;
-    }
-
-    public int getGlucoseLevel() {
-        return glucoseLevel;
-    }
-
-    public void setGlucoseLevel(int glucoseLevel) {
-        this.glucoseLevel = glucoseLevel;
     }
 
     public LocalDateTime getTimestamp() {
@@ -121,6 +86,6 @@ public class HealthData {
     public String toString() {
         return "HealthData [healthId=" + healthId + ", residentId=" + residentId +
                 ", heartRate=" + heartRate + ", bloodPressure=" + bloodPressure +
-                ", timestamp=" + timestamp + "]";
+                ", bloodOxygen=" + bloodOxygen + ", timestamp=" + timestamp + "]";
     }
 }
