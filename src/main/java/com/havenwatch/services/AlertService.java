@@ -21,14 +21,10 @@ public class AlertService {
     private final EnvironmentDataDAO environmentDataDAO;
     private final ResidentDAO residentDAO;
 
-    // Thresholds for alerts
+    // Updated thresholds for alerts (removed temperature, weight, glucose)
     private static final int HEART_RATE_HIGH = 100;
     private static final int HEART_RATE_LOW = 55;
-    private static final double TEMPERATURE_HIGH = 38.0;
-    private static final double TEMPERATURE_LOW = 35.5;
     private static final int BLOOD_OXYGEN_LOW = 92;
-    private static final int GLUCOSE_HIGH = 180;
-    private static final int GLUCOSE_LOW = 70;
 
     private static final double ROOM_TEMP_HIGH = 30.0;
     private static final double ROOM_TEMP_LOW = 15.0;
@@ -99,6 +95,10 @@ public class AlertService {
         int residentId = healthData.getResidentId();
         Resident resident = residentDAO.getResidentById(residentId);
 
+        if (resident == null) {
+            return false;
+        }
+
         // Check heart rate
         if (healthData.getHeartRate() > HEART_RATE_HIGH) {
             Alert alert = new Alert(
@@ -118,25 +118,6 @@ public class AlertService {
             alertsCreated |= alertDAO.insertAlert(alert);
         }
 
-        // Check temperature
-        if (healthData.getTemperature() > TEMPERATURE_HIGH) {
-            Alert alert = new Alert(
-                    residentId,
-                    Alert.AlertType.HEALTH,
-                    Alert.AlertSeverity.HIGH,
-                    "High body temperature detected for " + resident.getFullName() + ": " + healthData.getTemperature() + "°C"
-            );
-            alertsCreated |= alertDAO.insertAlert(alert);
-        } else if (healthData.getTemperature() < TEMPERATURE_LOW) {
-            Alert alert = new Alert(
-                    residentId,
-                    Alert.AlertType.HEALTH,
-                    Alert.AlertSeverity.MEDIUM,
-                    "Low body temperature detected for " + resident.getFullName() + ": " + healthData.getTemperature() + "°C"
-            );
-            alertsCreated |= alertDAO.insertAlert(alert);
-        }
-
         // Check blood oxygen
         if (healthData.getBloodOxygen() < BLOOD_OXYGEN_LOW) {
             Alert alert = new Alert(
@@ -148,23 +129,26 @@ public class AlertService {
             alertsCreated |= alertDAO.insertAlert(alert);
         }
 
-        // Check glucose level
-        if (healthData.getGlucoseLevel() > GLUCOSE_HIGH) {
-            Alert alert = new Alert(
-                    residentId,
-                    Alert.AlertType.HEALTH,
-                    Alert.AlertSeverity.MEDIUM,
-                    "High glucose level detected for " + resident.getFullName() + ": " + healthData.getGlucoseLevel() + " mg/dL"
-            );
-            alertsCreated |= alertDAO.insertAlert(alert);
-        } else if (healthData.getGlucoseLevel() < GLUCOSE_LOW) {
-            Alert alert = new Alert(
-                    residentId,
-                    Alert.AlertType.HEALTH,
-                    Alert.AlertSeverity.HIGH,
-                    "Low glucose level detected for " + resident.getFullName() + ": " + healthData.getGlucoseLevel() + " mg/dL"
-            );
-            alertsCreated |= alertDAO.insertAlert(alert);
+        // Check blood pressure for high values
+        String bp = healthData.getBloodPressure();
+        if (bp != null && !bp.isEmpty() && bp.contains("/")) {
+            try {
+                String[] parts = bp.split("/");
+                int systolic = Integer.parseInt(parts[0]);
+                int diastolic = Integer.parseInt(parts[1]);
+
+                if (systolic > 140 || diastolic > 90) {
+                    Alert alert = new Alert(
+                            residentId,
+                            Alert.AlertType.HEALTH,
+                            Alert.AlertSeverity.MEDIUM,
+                            "High blood pressure detected for " + resident.getFullName() + ": " + bp
+                    );
+                    alertsCreated |= alertDAO.insertAlert(alert);
+                }
+            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                // Invalid blood pressure format, skip
+            }
         }
 
         return alertsCreated;
@@ -179,6 +163,10 @@ public class AlertService {
         boolean alertsCreated = false;
         int residentId = environmentData.getResidentId();
         Resident resident = residentDAO.getResidentById(residentId);
+
+        if (resident == null) {
+            return false;
+        }
 
         // Check room temperature
         if (environmentData.getRoomTemperature() > ROOM_TEMP_HIGH) {
