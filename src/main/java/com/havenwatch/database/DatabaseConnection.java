@@ -8,9 +8,13 @@ import java.sql.SQLException;
  * Singleton class for database connection management
  */
 public class DatabaseConnection {
-    private static final String DATABASE_URL = "jdbc:mysql://localhost:3306/havenwatch";
+//    private static final String DATABASE_URL = "jdbc:mysql://195.235.211.197:3306/pii2_HavenWatch";
+//    private static final String DATABASE_USER = "db_DavIAN";  // Change to your MySQL username
+//    private static final String DATABASE_PASSWORD = "davidiancu123";  // Change to your MySQL password
+
+    private static final String DATABASE_URL = "jdbc:mysql://localhost/HavenWatch";
     private static final String DATABASE_USER = "root";  // Change to your MySQL username
-    private static final String DATABASE_PASSWORD = "";  // Change to your MySQL password
+    private static final String DATABASE_PASSWORD = "";
 
     private static DatabaseConnection instance;
     private Connection connection;
