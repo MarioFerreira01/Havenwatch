@@ -1,11 +1,8 @@
 package com.havenwatch.controllers;
 
 import com.havenwatch.database.ResidentDAO;
-import com.havenwatch.database.UserDAO;
 import com.havenwatch.models.Resident;
-import com.havenwatch.models.User;
-import com.havenwatch.services.AlertService;
-import com.havenwatch.services.AuthService;
+import com.havenwatch.services.AccessControlService;
 import com.havenwatch.utils.AlertUtils;
 import com.havenwatch.utils.DateTimeUtils;
 import com.havenwatch.utils.NavigationManager;
@@ -15,7 +12,6 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Button;
@@ -29,14 +25,12 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Controller for the residents management view
+ * Controller for the residents management view with proper access control
  */
 public class ResidentsController {
     @FXML
@@ -109,9 +103,7 @@ public class ResidentsController {
     private Button cancelButton;
 
     private final ResidentDAO residentDAO = new ResidentDAO();
-    private final UserDAO userDAO = new UserDAO();
-    private final AuthService authService = new AuthService();
-    private final AlertService alertService = new AlertService();
+    private final AccessControlService accessControlService = new AccessControlService();
 
     private ObservableList<Resident> residentsList = FXCollections.observableArrayList();
     private Resident currentResident;
@@ -122,107 +114,109 @@ public class ResidentsController {
      */
     @FXML
     private void initialize() {
-        // Set up table columns
-        firstNameField.setMinWidth(180);
-        lastNameField.setMinWidth(180);
-        addressField.setMinWidth(180);
-        emergencyContactField.setMinWidth(180);
-        emergencyPhoneField.setMinWidth(180);
-        dateOfBirthPicker.setMinWidth(180);
-        genderComboBox.setMinWidth(180);
+        try {
+            // Set up table columns
+            idColumn.setCellValueFactory(cellData ->
+                    new SimpleIntegerProperty(cellData.getValue().getResidentId()).asObject());
 
-        // Set preferred widths for text areas
-        medicalConditionsArea.setPrefWidth(500);
-        medicationsArea.setPrefWidth(500);
-        allergiesArea.setPrefWidth(500);
-        idColumn.setCellValueFactory(cellData ->
-                new SimpleIntegerProperty(cellData.getValue().getResidentId()).asObject());
+            nameColumn.setCellValueFactory(cellData ->
+                    new SimpleStringProperty(cellData.getValue().getFullName()));
 
-        nameColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getFullName()));
+            ageColumn.setCellValueFactory(cellData -> {
+                int age = DateTimeUtils.calculateAge(cellData.getValue().getDateOfBirth());
+                return new SimpleStringProperty(age + " years");
+            });
 
-        ageColumn.setCellValueFactory(cellData -> {
-            int age = DateTimeUtils.calculateAge(cellData.getValue().getDateOfBirth());
-            return new SimpleStringProperty(age + " years");
-        });
+            genderColumn.setCellValueFactory(cellData ->
+                    new SimpleStringProperty(cellData.getValue().getGender().toString()));
 
-        genderColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getGender().toString()));
+            conditionsColumn.setCellValueFactory(cellData ->
+                    new SimpleStringProperty(cellData.getValue().getMedicalConditions()));
 
-        conditionsColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getMedicalConditions()));
+            contactColumn.setCellValueFactory(cellData ->
+                    new SimpleStringProperty(cellData.getValue().getEmergencyContact() + " (" +
+                            cellData.getValue().getEmergencyPhone() + ")"));
 
-        contactColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getEmergencyContact() + " (" +
-                        cellData.getValue().getEmergencyPhone() + ")"));
+            // Set up actions column with buttons based on permissions
+            actionsColumn.setCellFactory(param -> new TableCell<Resident, Void>() {
+                private final Button viewButton = new Button("View");
+                private final Button editButton = new Button("Edit");
+                private final Button deleteButton = new Button("Delete");
+                private final HBox pane = new HBox(5, viewButton, editButton, deleteButton);
 
-        // Set up actions column with buttons
-        actionsColumn.setCellFactory(param -> new TableCell<Resident, Void>() {
-            private final Button viewButton = new Button("View");
-            private final Button editButton = new Button("Edit");
-            private final Button deleteButton = new Button("Delete");
-            private final HBox pane = new HBox(5, viewButton, editButton, deleteButton);
+                {
+                    viewButton.getStyleClass().add("small-button");
+                    editButton.getStyleClass().add("small-button");
+                    deleteButton.getStyleClass().add("small-button");
 
-            {
-                viewButton.getStyleClass().add("small-button");
-                editButton.getStyleClass().add("small-button");
-                deleteButton.getStyleClass().add("small-button");
+                    viewButton.setOnAction(event -> {
+                        Resident resident = getTableView().getItems().get(getIndex());
+                        showResidentDetails(resident);
+                    });
 
-                viewButton.setOnAction(event -> {
-                    Resident resident = getTableView().getItems().get(getIndex());
-                    showResidentDetails(resident);
-                });
+                    editButton.setOnAction(event -> {
+                        Resident resident = getTableView().getItems().get(getIndex());
+                        editResident(resident);
+                    });
 
-                editButton.setOnAction(event -> {
-                    Resident resident = getTableView().getItems().get(getIndex());
-                    editResident(resident);
-                });
+                    deleteButton.setOnAction(event -> {
+                        Resident resident = getTableView().getItems().get(getIndex());
+                        deleteResident(resident);
+                    });
+                }
 
-                deleteButton.setOnAction(event -> {
-                    Resident resident = getTableView().getItems().get(getIndex());
-                    deleteResident(resident);
-                });
-            }
+                @Override
+                protected void updateItem(Void item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty) {
+                        setGraphic(null);
+                    } else {
+                        Resident resident = getTableView().getItems().get(getIndex());
 
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : pane);
-            }
-        });
+                        // Show/hide buttons based on permissions
+                        editButton.setVisible(accessControlService.canEditResident(resident.getResidentId()));
+                        deleteButton.setVisible(accessControlService.canDeleteResident(resident.getResidentId()));
 
-        // Set up gender combo box
-        genderComboBox.setItems(FXCollections.observableArrayList("MALE", "FEMALE", "OTHER"));
+                        setGraphic(pane);
+                    }
+                }
+            });
 
-        // Hide form initially
-        residentFormPane.setVisible(false);
-        residentFormPane.setManaged(false);
+            // Set up gender combo box
+            genderComboBox.setItems(FXCollections.observableArrayList("MALE", "FEMALE", "OTHER"));
 
-        // Load initial data
-        loadResidents();
+            // Hide form initially
+            residentFormPane.setVisible(false);
+            residentFormPane.setManaged(false);
+
+            // Load initial data
+            loadResidents();
+
+        } catch (Exception e) {
+            System.err.println("Error initializing residents controller: " + e.getMessage());
+            e.printStackTrace();
+            showErrorMessage("Failed to initialize residents view: " + e.getMessage());
+        }
     }
 
     /**
-     * Load residents from the database
+     * Load residents with proper access control
      */
     private void loadResidents() {
-        // Load residents based on user role
-        List<Resident> residents;
+        try {
+            // Load only accessible residents
+            List<Resident> residents = accessControlService.getAccessibleResidents();
 
-        if (authService.isAdmin()) {
-            // Admin can see all residents
-            residents = residentDAO.getAllResidents();
-        } else {
-            // Other users can only see assigned residents
-            int userId = authService.getCurrentUser().getUserId();
-            residents = residentDAO.getResidentsByUser(userId);
+            residentsList.setAll(residents);
+            residentsTable.setItems(residentsList);
+
+            // Update count label
+            totalResidentsLabel.setText(String.valueOf(residents.size()));
+
+        } catch (Exception e) {
+            System.err.println("Error loading residents: " + e.getMessage());
+            showErrorMessage("Failed to load residents: " + e.getMessage());
         }
-
-        residentsList.setAll(residents);
-        residentsTable.setItems(residentsList);
-
-        // Update count label
-        totalResidentsLabel.setText(String.valueOf(residents.size()));
     }
 
     /**
@@ -230,77 +224,121 @@ public class ResidentsController {
      */
     @FXML
     private void handleAddResident() {
-        // Clear form
-        clearForm();
+        try {
+            // Check permission to create residents
+            if (!accessControlService.canCreateResidents()) {
+                showErrorMessage("You do not have permission to create new residents.");
+                return;
+            }
 
-        // Show form for adding
-        isEditMode = false;
-        currentResident = null;
-        saveButton.setText("Add Resident");
+            // Clear form
+            clearForm();
 
-        residentFormPane.setVisible(true);
-        residentFormPane.setManaged(true);
+            // Show form for adding
+            isEditMode = false;
+            currentResident = null;
+            saveButton.setText("Add Resident");
+
+            residentFormPane.setVisible(true);
+            residentFormPane.setManaged(true);
+
+        } catch (Exception e) {
+            System.err.println("Error handling add resident: " + e.getMessage());
+            showErrorMessage("Failed to open add resident form: " + e.getMessage());
+        }
     }
 
     /**
      * Show resident details in read-only mode
      */
     private void showResidentDetails(Resident resident) {
-        // Use same form in read-only mode
-        currentResident = resident;
-        populateForm(resident);
+        try {
+            // Check access permission
+            if (!accessControlService.canAccessResident(resident.getResidentId())) {
+                showErrorMessage("You do not have permission to view this resident's details.");
+                return;
+            }
 
-        // Disable all form fields
-        setFormEditable(false);
+            // Use same form in read-only mode
+            currentResident = resident;
+            populateForm(resident);
 
-        // Show form
-        residentFormPane.setVisible(true);
-        residentFormPane.setManaged(true);
-        saveButton.setVisible(false);
-        cancelButton.setText("Close");
+            // Disable all form fields
+            setFormEditable(false);
+
+            // Show form
+            residentFormPane.setVisible(true);
+            residentFormPane.setManaged(true);
+            saveButton.setVisible(false);
+            cancelButton.setText("Close");
+
+        } catch (Exception e) {
+            System.err.println("Error showing resident details: " + e.getMessage());
+            showErrorMessage("Failed to show resident details: " + e.getMessage());
+        }
     }
 
     /**
      * Edit an existing resident
      */
     private void editResident(Resident resident) {
-        // Set up form for editing
-        isEditMode = true;
-        currentResident = resident;
-        populateForm(resident);
+        try {
+            // Check edit permission
+            if (!accessControlService.canEditResident(resident.getResidentId())) {
+                showErrorMessage("You do not have permission to edit this resident.");
+                return;
+            }
 
-        // Enable form fields
-        setFormEditable(true);
+            // Set up form for editing
+            isEditMode = true;
+            currentResident = resident;
+            populateForm(resident);
 
-        // Show form
-        residentFormPane.setVisible(true);
-        residentFormPane.setManaged(true);
-        saveButton.setVisible(true);
-        saveButton.setText("Update Resident");
-        cancelButton.setText("Cancel");
+            // Enable form fields
+            setFormEditable(true);
+
+            // Show form
+            residentFormPane.setVisible(true);
+            residentFormPane.setManaged(true);
+            saveButton.setVisible(true);
+            saveButton.setText("Update Resident");
+            cancelButton.setText("Cancel");
+
+        } catch (Exception e) {
+            System.err.println("Error editing resident: " + e.getMessage());
+            showErrorMessage("Failed to edit resident: " + e.getMessage());
+        }
     }
 
     /**
      * Delete a resident
      */
     private void deleteResident(Resident resident) {
-        boolean confirmed = AlertUtils.showConfirmation(
-                rootPane.getScene().getWindow(),
-                "Confirm Delete",
-                "Are you sure you want to delete resident " + resident.getFullName() + "? This action cannot be undone."
-        );
-
-        if (confirmed) {
-            if (residentDAO.deleteResident(resident.getResidentId())) {
-                // Refresh the list
-                loadResidents();
-            } else {
-                AlertUtils.showError(
-                        rootPane.getScene().getWindow(),
-                        "Delete Failed",
-                        "Failed to delete resident. Please try again."
-                );
+        try {
+            // Check delete permission
+            if (!accessControlService.canDeleteResident(resident.getResidentId())) {
+                showErrorMessage("You do not have permission to delete this resident.");
+                return;
             }
+
+            boolean confirmed = AlertUtils.showConfirmation(
+                    rootPane.getScene().getWindow(),
+                    "Confirm Delete",
+                    "Are you sure you want to delete resident " + resident.getFullName() + "? This action cannot be undone."
+            );
+
+            if (confirmed) {
+                if (residentDAO.deleteResident(resident.getResidentId())) {
+                    // Refresh the list
+                    loadResidents();
+                } else {
+                    showErrorMessage("Failed to delete resident. Please try again.");
+                }
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error deleting resident: " + e.getMessage());
+            showErrorMessage("Failed to delete resident: " + e.getMessage());
         }
     }
 
@@ -364,51 +402,65 @@ public class ResidentsController {
      */
     @FXML
     private void handleSave() {
-        // Validate form
-        if (!validateForm()) {
-            return;
-        }
-
-        // Create or update resident
-        Resident resident = isEditMode ? currentResident : new Resident();
-
-        resident.setFirstName(firstNameField.getText().trim());
-        resident.setLastName(lastNameField.getText().trim());
-        resident.setDateOfBirth(dateOfBirthPicker.getValue());
-        resident.setGender(Resident.Gender.valueOf(genderComboBox.getValue()));
-        resident.setAddress(addressField.getText().trim());
-        resident.setEmergencyContact(emergencyContactField.getText().trim());
-        resident.setEmergencyPhone(emergencyPhoneField.getText().trim());
-        resident.setMedicalConditions(medicalConditionsArea.getText().trim());
-        resident.setMedications(medicationsArea.getText().trim());
-        resident.setAllergies(allergiesArea.getText().trim());
-
-        boolean success;
-        if (isEditMode) {
-            success = residentDAO.updateResident(resident);
-        } else {
-            success = residentDAO.insertResident(resident);
-
-            // If successful add and not admin, assign to current user
-            if (success && !authService.isAdmin()) {
-                int userId = authService.getCurrentUser().getUserId();
-                residentDAO.assignResidentToUser(resident.getResidentId(), userId);
+        try {
+            // Validate form
+            if (!validateForm()) {
+                return;
             }
-        }
 
-        if (success) {
-            // Hide form
-            residentFormPane.setVisible(false);
-            residentFormPane.setManaged(false);
+            // Create or update resident
+            Resident resident = isEditMode ? currentResident : new Resident();
 
-            // Refresh list
-            loadResidents();
-        } else {
-            AlertUtils.showError(
-                    rootPane.getScene().getWindow(),
-                    isEditMode ? "Update Failed" : "Add Failed",
-                    "Failed to save resident. Please try again."
-            );
+            resident.setFirstName(firstNameField.getText().trim());
+            resident.setLastName(lastNameField.getText().trim());
+            resident.setDateOfBirth(dateOfBirthPicker.getValue());
+            resident.setGender(Resident.Gender.valueOf(genderComboBox.getValue()));
+            resident.setAddress(addressField.getText().trim());
+            resident.setEmergencyContact(emergencyContactField.getText().trim());
+            resident.setEmergencyPhone(emergencyPhoneField.getText().trim());
+            resident.setMedicalConditions(medicalConditionsArea.getText().trim());
+            resident.setMedications(medicationsArea.getText().trim());
+            resident.setAllergies(allergiesArea.getText().trim());
+
+            boolean success;
+            if (isEditMode) {
+                // Check edit permission again
+                if (!accessControlService.canEditResident(resident.getResidentId())) {
+                    showErrorMessage("You do not have permission to edit this resident.");
+                    return;
+                }
+                success = residentDAO.updateResident(resident);
+            } else {
+                // Check create permission again
+                if (!accessControlService.canCreateResidents()) {
+                    showErrorMessage("You do not have permission to create new residents.");
+                    return;
+                }
+                success = residentDAO.insertResident(resident);
+
+                // If successful add and not admin, assign to current user
+                if (success && !accessControlService.canManageUsers()) {
+                    // Get current user ID from SessionManager
+                    int userId = com.havenwatch.utils.SessionManager.getInstance().getCurrentUser().getUserId();
+                    residentDAO.assignResidentToUser(resident.getResidentId(), userId);
+                }
+            }
+
+            if (success) {
+                // Hide form
+                residentFormPane.setVisible(false);
+                residentFormPane.setManaged(false);
+
+                // Refresh list
+                loadResidents();
+            } else {
+                showErrorMessage("Failed to save resident. Please try again.");
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error saving resident: " + e.getMessage());
+            e.printStackTrace();
+            showErrorMessage("Failed to save resident: " + e.getMessage());
         }
     }
 
@@ -427,19 +479,25 @@ public class ResidentsController {
      */
     @FXML
     private void handleManageCareTeam() {
-        Resident selectedResident = residentsTable.getSelectionModel().getSelectedItem();
-
-        if (selectedResident == null) {
-            AlertUtils.showWarning(
-                    rootPane.getScene().getWindow(),
-                    "No Selection",
-                    "Please select a resident first."
-            );
-            return;
-        }
-
-        // Show care team management dialog
         try {
+            Resident selectedResident = residentsTable.getSelectionModel().getSelectedItem();
+
+            if (selectedResident == null) {
+                AlertUtils.showWarning(
+                        rootPane.getScene().getWindow(),
+                        "No Selection",
+                        "Please select a resident first."
+                );
+                return;
+            }
+
+            // Check if user can assign residents (admin only)
+            if (!accessControlService.canAssignResidents()) {
+                showErrorMessage("You do not have permission to manage care teams.");
+                return;
+            }
+
+            // Show care team management dialog
             FXMLLoader loader = NavigationManager.getInstance().showDialog(
                     "care_team_dialog",
                     "Manage Care Team - " + selectedResident.getFullName()
@@ -450,17 +508,13 @@ public class ResidentsController {
             controller.setResident(selectedResident);
 
         } catch (Exception e) {
-            AlertUtils.showError(
-                    rootPane.getScene().getWindow(),
-                    "Error",
-                    "Failed to open care team management dialog: " + e.getMessage()
-            );
+            System.err.println("Error opening care team dialog: " + e.getMessage());
+            showErrorMessage("Failed to open care team management dialog: " + e.getMessage());
         }
     }
 
     /**
      * Validate form input
-     *
      * @return true if valid, false otherwise
      */
     private boolean validateForm() {
@@ -509,5 +563,14 @@ public class ResidentsController {
         }
 
         return valid;
+    }
+
+    /**
+     * Show error message to user
+     */
+    private void showErrorMessage(String message) {
+        if (rootPane != null && rootPane.getScene() != null) {
+            AlertUtils.showError(rootPane.getScene().getWindow(), "Residents Error", message);
+        }
     }
 }
