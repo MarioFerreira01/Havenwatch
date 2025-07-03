@@ -4,15 +4,16 @@ import com.havenwatch.models.Resident;
 import com.havenwatch.models.Resident.Gender;
 
 import java.sql.*;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ResidentDAO {
-    private final Connection connection;
 
-    public ResidentDAO() {
-        connection = DatabaseConnection.getInstance().getConnection();
+    /**
+     * Get a fresh database connection for each operation
+     */
+    private Connection getConnection() throws SQLException {
+        return DatabaseConnection.getInstance().getConnection();
     }
 
     /**
@@ -22,7 +23,10 @@ public class ResidentDAO {
      */
     public Resident getResidentById(int residentId) {
         String query = "SELECT * FROM residents WHERE resident_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, residentId);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -32,6 +36,7 @@ public class ResidentDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error getting resident by ID: " + e.getMessage());
+            e.printStackTrace();
         }
         return null;
     }
@@ -43,7 +48,9 @@ public class ResidentDAO {
     public List<Resident> getAllResidents() {
         List<Resident> residents = new ArrayList<>();
         String query = "SELECT * FROM residents ORDER BY last_name, first_name";
-        try (Statement stmt = connection.createStatement();
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
 
             while (rs.next()) {
@@ -51,6 +58,7 @@ public class ResidentDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error getting all residents: " + e.getMessage());
+            e.printStackTrace();
         }
         return residents;
     }
@@ -66,7 +74,10 @@ public class ResidentDAO {
                 "JOIN user_resident_access ura ON r.resident_id = ura.resident_id " +
                 "WHERE ura.user_id = ? " +
                 "ORDER BY r.last_name, r.first_name";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, userId);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -76,6 +87,7 @@ public class ResidentDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error getting residents by user: " + e.getMessage());
+            e.printStackTrace();
         }
         return residents;
     }
@@ -89,7 +101,10 @@ public class ResidentDAO {
         String query = "INSERT INTO residents (first_name, last_name, date_of_birth, gender, " +
                 "address, emergency_contact, emergency_phone, medical_conditions, " +
                 "medications, allergies) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+
             stmt.setString(1, resident.getFirstName());
             stmt.setString(2, resident.getLastName());
             stmt.setDate(3, Date.valueOf(resident.getDateOfBirth()));
@@ -114,6 +129,7 @@ public class ResidentDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error inserting resident: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -128,7 +144,10 @@ public class ResidentDAO {
                 "gender = ?, address = ?, emergency_contact = ?, emergency_phone = ?, " +
                 "medical_conditions = ?, medications = ?, allergies = ? " +
                 "WHERE resident_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setString(1, resident.getFirstName());
             stmt.setString(2, resident.getLastName());
             stmt.setDate(3, Date.valueOf(resident.getDateOfBirth()));
@@ -143,8 +162,10 @@ public class ResidentDAO {
 
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
+
         } catch (SQLException e) {
             System.err.println("Error updating resident: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -155,14 +176,43 @@ public class ResidentDAO {
      * @return true if successful, false otherwise
      */
     public boolean deleteResident(int residentId) {
-        String query = "DELETE FROM residents WHERE resident_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, residentId);
+        // First delete related access records
+        String deleteAccessQuery = "DELETE FROM user_resident_access WHERE resident_id = ?";
+        String deleteResidentQuery = "DELETE FROM residents WHERE resident_id = ?";
 
-            int affectedRows = stmt.executeUpdate();
-            return affectedRows > 0;
+        try (Connection conn = getConnection()) {
+            // Start transaction
+            conn.setAutoCommit(false);
+
+            try {
+                // Delete access records first
+                try (PreparedStatement stmt = conn.prepareStatement(deleteAccessQuery)) {
+                    stmt.setInt(1, residentId);
+                    stmt.executeUpdate();
+                }
+
+                // Delete resident
+                try (PreparedStatement stmt = conn.prepareStatement(deleteResidentQuery)) {
+                    stmt.setInt(1, residentId);
+                    int affectedRows = stmt.executeUpdate();
+
+                    if (affectedRows > 0) {
+                        conn.commit();
+                        return true;
+                    } else {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         } catch (SQLException e) {
             System.err.println("Error deleting resident: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -174,15 +224,35 @@ public class ResidentDAO {
      * @return true if successful, false otherwise
      */
     public boolean assignResidentToUser(int residentId, int userId) {
-        String query = "INSERT INTO user_resident_access (user_id, resident_id) VALUES (?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, userId);
-            stmt.setInt(2, residentId);
+        // Check if assignment already exists
+        String checkQuery = "SELECT COUNT(*) FROM user_resident_access WHERE user_id = ? AND resident_id = ?";
+        String insertQuery = "INSERT INTO user_resident_access (user_id, resident_id) VALUES (?, ?)";
 
-            int affectedRows = stmt.executeUpdate();
-            return affectedRows > 0;
+        try (Connection conn = getConnection()) {
+            // Check if assignment already exists
+            try (PreparedStatement checkStmt = conn.prepareStatement(checkQuery)) {
+                checkStmt.setInt(1, userId);
+                checkStmt.setInt(2, residentId);
+
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        // Assignment already exists
+                        return true;
+                    }
+                }
+            }
+
+            // Create new assignment
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertQuery)) {
+                insertStmt.setInt(1, userId);
+                insertStmt.setInt(2, residentId);
+
+                int affectedRows = insertStmt.executeUpdate();
+                return affectedRows > 0;
+            }
         } catch (SQLException e) {
             System.err.println("Error assigning resident to user: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -195,14 +265,19 @@ public class ResidentDAO {
      */
     public boolean removeResidentFromUser(int residentId, int userId) {
         String query = "DELETE FROM user_resident_access WHERE user_id = ? AND resident_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, userId);
             stmt.setInt(2, residentId);
 
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
+
         } catch (SQLException e) {
             System.err.println("Error removing resident from user: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -215,7 +290,10 @@ public class ResidentDAO {
     public List<Integer> getUsersWithAccessToResident(int residentId) {
         List<Integer> userIds = new ArrayList<>();
         String query = "SELECT user_id FROM user_resident_access WHERE resident_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
             stmt.setInt(1, residentId);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -225,8 +303,75 @@ public class ResidentDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error getting users with access: " + e.getMessage());
+            e.printStackTrace();
         }
         return userIds;
+    }
+
+    /**
+     * Check if a user has access to a specific resident
+     * @param userId The user's ID
+     * @param residentId The resident's ID
+     * @return true if user has access, false otherwise
+     */
+    public boolean userHasAccessToResident(int userId, int residentId) {
+        String query = "SELECT COUNT(*) FROM user_resident_access WHERE user_id = ? AND resident_id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, userId);
+            stmt.setInt(2, residentId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error checking user access: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * Get residents by multiple IDs (for batch operations)
+     * @param residentIds List of resident IDs
+     * @return List of residents
+     */
+    public List<Resident> getResidentsByIds(List<Integer> residentIds) {
+        if (residentIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Resident> residents = new ArrayList<>();
+        StringBuilder queryBuilder = new StringBuilder();
+        queryBuilder.append("SELECT * FROM residents WHERE resident_id IN (");
+
+        for (int i = 0; i < residentIds.size(); i++) {
+            if (i > 0) queryBuilder.append(",");
+            queryBuilder.append("?");
+        }
+        queryBuilder.append(") ORDER BY last_name, first_name");
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(queryBuilder.toString())) {
+
+            for (int i = 0; i < residentIds.size(); i++) {
+                stmt.setInt(i + 1, residentIds.get(i));
+            }
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    residents.add(extractResidentFromResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting residents by IDs: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return residents;
     }
 
     /**
