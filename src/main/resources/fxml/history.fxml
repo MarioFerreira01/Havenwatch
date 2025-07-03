@@ -76,10 +76,10 @@
         <TableView fx:id="dataTable" prefHeight="200.0" prefWidth="200.0">
             <columns>
                 <TableColumn fx:id="timestampColumn" prefWidth="150.0" text="Time" />
-                <TableColumn fx:id="value1Column" prefWidth="100.0" text="Value 1" />
-                <TableColumn fx:id="value2Column" prefWidth="100.0" text="Value 2" />
-                <TableColumn fx:id="value3Column" prefWidth="100.0" text="Value 3" />
-                <TableColumn fx:id="value4Column" prefWidth="100.0" text="Value 4" />
+                <TableColumn fx:id="value1Column" prefWidth="120.0" text="Value 1" />
+                <TableColumn fx:id="value2Column" prefWidth="120.0" text="Value 2" />
+                <TableColumn fx:id="value3Column" prefWidth="120.0" text="Value 3" />
+                <TableColumn fx:id="value4Column" prefWidth="120.0" text="Value 4" />
             </columns>
         </TableView>
         <LineChart fx:id="dataChart" prefHeight="400.0" prefWidth="500.0" title="Historical Data Trends">

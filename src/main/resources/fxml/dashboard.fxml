@@ -95,10 +95,9 @@
         <TableView fx:id="residentStatusTable" prefHeight="200.0" prefWidth="200.0" styleClass="health-table">
             <columns>
                 <TableColumn fx:id="nameColumn" prefWidth="150.0" text="Resident" />
-                <TableColumn fx:id="heartRateColumn" prefWidth="75.0" text="Heart Rate" />
-                <TableColumn fx:id="bpColumn" prefWidth="100.0" text="Blood Pressure" />
-                <TableColumn fx:id="tempColumn" prefWidth="75.0" text="Temp" />
-                <TableColumn fx:id="oxygenColumn" prefWidth="75.0" text="Oxygen" />
+                <TableColumn fx:id="heartRateColumn" prefWidth="100.0" text="Heart Rate" />
+                <TableColumn fx:id="bpColumn" prefWidth="120.0" text="Blood Pressure" />
+                <TableColumn fx:id="oxygenColumn" prefWidth="100.0" text="Blood Oxygen" />
                 <TableColumn fx:id="roomTempColumn" prefWidth="100.0" text="Room Temp" />
                 <TableColumn fx:id="lastUpdatedColumn" prefWidth="150.0" text="Last Updated" />
             </columns>

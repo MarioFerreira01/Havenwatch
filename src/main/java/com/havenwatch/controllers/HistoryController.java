@@ -274,7 +274,7 @@ public class HistoryController {
             value1Column.setText("Heart Rate");
             value2Column.setText("Blood Pressure");
             value3Column.setText("Blood Oxygen");
-            value4Column.setText(""); // No fourth value for health data anymore
+            value4Column.setText(""); // No fourth value for health data
         } else if ("Environment Data".equals(dataType)) {
             timestampColumn.setText("Time");
             value1Column.setText("Room Temp");
@@ -322,18 +322,18 @@ public class HistoryController {
                     return;
                 }
 
-                // Create data entries (updated for new schema - no temperature)
+                // Create data entries (updated for new schema)
                 for (HealthData data : healthDataList) {
                     dataEntries.add(new HistoricalDataEntry(
                             data.getTimestamp(),
-                            data.getHeartRate(),          // value1: Heart Rate
-                            data.getBloodPressure(),      // value2: Blood Pressure
-                            data.getBloodOxygen(),        // value3: Blood Oxygen
-                            null                           // value4: No fourth value
+                            data.getHeartRate(),
+                            data.getBloodPressure(),
+                            data.getBloodOxygen(),
+                            null // No fourth value
                     ));
                 }
 
-                // Create chart series (updated for new schema - no temperature)
+                // Create chart series (updated for new schema)
                 XYChart.Series<Number, Number> heartRateSeries = new XYChart.Series<>();
                 heartRateSeries.setName("Heart Rate");
 
@@ -364,10 +364,10 @@ public class HistoryController {
                 for (EnvironmentData data : environmentDataList) {
                     dataEntries.add(new HistoricalDataEntry(
                             data.getTimestamp(),
-                            data.getRoomTemperature(),    // value1: Room Temperature
-                            data.getHumidity() + "%",     // value2: Humidity
-                            data.getAirQuality(),         // value3: Air Quality
-                            data.getGasLevel()            // value4: Gas Level
+                            data.getRoomTemperature(),
+                            data.getHumidity() + "%",
+                            data.getAirQuality(),
+                            data.getGasLevel()
                     ));
                 }
 
