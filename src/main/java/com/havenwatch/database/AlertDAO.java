@@ -11,10 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AlertDAO {
-    private final Connection connection;
 
+    // Remove the stored connection - get fresh connections per method call
     public AlertDAO() {
-        connection = DatabaseConnection.getInstance().getConnection();
+        // Constructor now empty - no connection stored
     }
 
     /**
@@ -24,9 +24,12 @@ public class AlertDAO {
      */
     public Alert getAlertById(int alertId) {
         String query = "SELECT * FROM alerts WHERE alert_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, alertId);
 
+        // Get fresh connection for this operation
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
+            stmt.setInt(1, alertId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return extractAlertFromResultSet(rs);
@@ -46,9 +49,11 @@ public class AlertDAO {
     public List<Alert> getActiveAlertsByResident(int residentId) {
         List<Alert> alerts = new ArrayList<>();
         String query = "SELECT * FROM alerts WHERE resident_id = ? AND status != 'RESOLVED' ORDER BY created_at DESC";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, residentId);
 
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
+            stmt.setInt(1, residentId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     alerts.add(extractAlertFromResultSet(rs));
@@ -67,7 +72,9 @@ public class AlertDAO {
     public List<Alert> getAllActiveAlerts() {
         List<Alert> alerts = new ArrayList<>();
         String query = "SELECT * FROM alerts WHERE status != 'RESOLVED' ORDER BY severity DESC, created_at DESC";
-        try (Statement stmt = connection.createStatement();
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
 
             while (rs.next()) {
@@ -88,7 +95,10 @@ public class AlertDAO {
     public List<Alert> getAlertsByTypeAndStatus(AlertType type, AlertStatus status) {
         List<Alert> alerts = new ArrayList<>();
         String query = "SELECT * FROM alerts WHERE alert_type = ? AND status = ? ORDER BY created_at DESC";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
             stmt.setString(1, type.toString());
             stmt.setString(2, status.toString());
 
@@ -111,7 +121,10 @@ public class AlertDAO {
     public boolean insertAlert(Alert alert) {
         String query = "INSERT INTO alerts (resident_id, alert_type, severity, message, status) " +
                 "VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+
             stmt.setInt(1, alert.getResidentId());
             stmt.setString(2, alert.getAlertType().toString());
             stmt.setString(3, alert.getSeverity().toString());
@@ -150,7 +163,9 @@ public class AlertDAO {
             query = "UPDATE alerts SET status = ? WHERE alert_id = ?";
         }
 
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
             stmt.setString(1, status.toString());
 
             if (status == AlertStatus.RESOLVED) {
@@ -175,9 +190,11 @@ public class AlertDAO {
      */
     public boolean deleteAlert(int alertId) {
         String query = "DELETE FROM alerts WHERE alert_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, alertId);
 
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
+            stmt.setInt(1, alertId);
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
@@ -194,7 +211,9 @@ public class AlertDAO {
         int[] counts = new int[4];
         String query = "SELECT severity, COUNT(*) as count FROM alerts WHERE status != 'RESOLVED' " +
                 "GROUP BY severity ORDER BY FIELD(severity, 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL')";
-        try (Statement stmt = connection.createStatement();
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
 
             while (rs.next()) {

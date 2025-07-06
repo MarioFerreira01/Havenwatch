@@ -33,16 +33,6 @@ public class Main extends Application {
         }
     }
 
-    @Override
-    public void stop() {
-        // Clean up resources when application closes
-        if (dataSimulationService != null) {
-            dataSimulationService.stopSimulation();
-        }
-
-        // Close database connection
-        DatabaseConnection.getInstance().closeConnection();
-    }
 
     /**
      * Main method

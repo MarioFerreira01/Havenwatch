@@ -8,10 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserDAO {
-    private final Connection connection;
 
+    // Remove the stored connection - get fresh connections per method call
     public UserDAO() {
-        connection = DatabaseConnection.getInstance().getConnection();
+        // Constructor now empty - no connection stored
     }
 
     /**
@@ -22,7 +22,10 @@ public class UserDAO {
      */
     public User authenticate(String username, String password) {
         String query = "SELECT * FROM users WHERE username = ? AND password = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
             stmt.setString(1, username);
             stmt.setString(2, password);
 
@@ -44,7 +47,10 @@ public class UserDAO {
      */
     public User getUserById(int userId) {
         String query = "SELECT * FROM users WHERE user_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
             stmt.setInt(1, userId);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -65,7 +71,9 @@ public class UserDAO {
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
         String query = "SELECT * FROM users ORDER BY full_name";
-        try (Statement stmt = connection.createStatement();
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
 
             while (rs.next()) {
@@ -85,7 +93,10 @@ public class UserDAO {
     public boolean insertUser(User user) {
         String query = "INSERT INTO users (username, password, role, full_name, email, phone) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+
             stmt.setString(1, user.getUsername());
             stmt.setString(2, user.getPassword());
             stmt.setString(3, user.getRole().toString());
@@ -118,7 +129,10 @@ public class UserDAO {
     public boolean updateUser(User user) {
         String query = "UPDATE users SET username = ?, password = ?, role = ?, " +
                 "full_name = ?, email = ?, phone = ? WHERE user_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
             stmt.setString(1, user.getUsername());
             stmt.setString(2, user.getPassword());
             stmt.setString(3, user.getRole().toString());
@@ -142,7 +156,10 @@ public class UserDAO {
      */
     public boolean deleteUser(int userId) {
         String query = "DELETE FROM users WHERE user_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
             stmt.setInt(1, userId);
 
             int affectedRows = stmt.executeUpdate();
@@ -160,7 +177,10 @@ public class UserDAO {
      */
     public boolean usernameExists(String username) {
         String query = "SELECT COUNT(*) FROM users WHERE username = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+
+        try (Connection connection = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
+
             stmt.setString(1, username);
 
             try (ResultSet rs = stmt.executeQuery()) {
